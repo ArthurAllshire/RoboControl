@@ -1,12 +1,15 @@
 from socket import socket, AF_INET, SOCK_DGRAM
+sock = False
 
-def main():
+def make_sock(port):
     sock = socket(AF_INET, SOCK_DGRAM)
-    sock.bind(('', 4774)) # bind to all interfaces/addresses by default
-    while True:
-        packet = sock.recv(1024)
-        exploded = [float(val) for val in packet.split(',')]
-        print exploded
+    sock.bind(('', port)) # bind to all interfaces/addresses by default
+    return sock
 
-if __name__ == '__main__':
-    main()
+def get_data(port):
+    global sock
+    if not sock:
+        sock = make_sock(port)
+    packet = sock.recv(1024)
+    exploded = [float(val) for val in packet.split(',')]
+    return exploded
