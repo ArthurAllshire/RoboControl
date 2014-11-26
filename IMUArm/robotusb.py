@@ -1,4 +1,4 @@
-import usb.core, usb.util, time
+import usb.core, usb.util
 
 RoboArm = None
 
@@ -24,4 +24,8 @@ def MoveArm(ArmCmd):
 
 def StopArm():
     global RoboArm
+    if RoboArm is None:
+        RoboArm = usb.core.find(idVendor=0x1267,idProduct=0x0000)
+        if RoboArm is None:
+            raise ValueError("Robot arm not found")
     RoboArm.ctrl_transfer(0x40,6,0x100, 0,[0,0,0],1000)
