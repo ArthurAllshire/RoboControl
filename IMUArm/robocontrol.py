@@ -7,70 +7,56 @@ import math
 #http://58.162.140.188/mediawiki-1.23.2/index.php/DropBone_IMU
 #when I do angle/180*pi, I am converting from degrees to radians
 #as euler angles are given in radians
-STOP_THRESH = 5/180*math.pi
-STOP_VERT_THRESH = 10/180*math.pi
-SHOULDER_THRESH = 20/180*math.pi
-ELBOW_THRESH = 30/180*math.pi
-WRIST_THRESH = 40/180*math.pi
-BASE_THRESH = 5/180*math.pi
-GRIP_THRESH = 10/180*math.pi
 listen_port = 4774
+MOVE_BASE = 45.0/180*math.pi
+GRIP = 30.0/180*math.pi
+MOVE_SHOULDER = 55.0/180*math.pi
+MOVE_ELBOW = 40.0/180*math.pi
+MOVE_WRIST = 25.0/180*math.pi
+
 
 def main():
-    global listen_port, STOP_THRESH, ELBOW_THRESH, SHOULDER_THRESH, WRIST_THRESH, BASE_THRESH, GRIP_THRESH
-    last_5_pitch = [0, 0, 0, 0, 0] #the differences between each of the last 5 measurements for pitch
     euler = [0,0,0]
+    euler_offset = None
     while True: #main control loop
         values = udp.get_data(listen_port)
-        last_euler = euler
         euler = values[:3]
-        euler_diff = list_diff(euler, last_euler)
-        last_5_pitch = last_5_pitch[1:]
-        last_5_pitch.append(euler_diff[1])
-        avg = average(last_5_pitch) #average of the last 5 values for pitch
-        #if (abs(avg) < STOP_VERT_THRESH) or (abs(euler_diff[1])<STOP_THRESH) or (abs(euler_diff[2])<STOP_THRESH):
+        if not euler_offset:
+            euler_offset = euler
+        else:
+            for angle, offset in zip(euler, euler_offset):
+                angle -= offset
         robotusb.StopArm()
-        #vertical movements (pitch)
-        if avg >= STOP_VERT_THRESH:
-            if avg < SHOULDER_THRESH:
-                robotusb.MoveArm('SLDR_UP')
-            elif avg < ELBOW_THRESH:
-                robotusb.MoveArm('ELBW_UP')
-            elif avg < WRIST_THRESH:
-                robotusb.MoveArm('WRST_UP')
-        elif avg <= -STOP_VERT_THRESH:
-            if avg > -SHOULDER_THRESH:
-                robotusb.MoveArm('SLDR_DN')
-            elif avg > -ELBOW_THRESH:
-                robotusb.MoveArm('ELBW_DN')
-            elif avg > -WRIST_THRESH:
-                robotusb.MoveArm('WRST_DN')
-        #base rotations (yaw)
-        if STOP_THRESH<euler_diff[0]<=BASE_THRESH:
-            robotusb.MoveArm('BASE_CL')
-        elif -STOP_THRESH>euler_diff[0]>=-BASE_THRESH:
-            robotusb.MoveArm('BASE_AC')
-        #grip (roll)
-        if GRIP_THRESH<euler_diff[2]:
-            robotusb.MoveArm('GRIP_OP')
-        elif -GRIP_THRESH>euler_diff[2]:
-            robotusb.MoveArm('GRIP_CS')
-        
-
-#find the average of the values in list values
-def average(values):
-    total = 0
-    for value in values:
-        total += value
-    return total/len(values)
-
-#find the difference between each of the values in list one to each of the values in list 2
-def list_diff(list1, list2):
-    diff = []
-    for value1 in list1:
-        for value2 in list2:
-            diff.append(value1-value2)
-    return diff
+        if abs(euler[0]) > MOVE_BASE: # move base with yaw
+            if euler[0] > 0:
+                robotusb.MoveArm("BASE_CL")
+            else:
+                robotusb.MoveArm("BASE_AC")
+        elif abs(euler[1]) > MOVE_WRIST:
+            up = False
+            if euler[1] < 0:
+                up=True
+            if abs(euler[1]) > MOVE_SHOULDER:
+                if up:
+                    robotusb.MoveArm("SLDR_UP")
+                else:
+                    robotusb.MoveArm("SLDR_DN")
+            elif abs(euler[1]) > MOVE_ELBOW:
+                if up:
+                    robotusb.MoveArm("ELBW_UP")
+                else:
+                    robotusb.MoveArm("ELBW_DN")
+            elif abs(euler[1]) > MOVE_WRIST:
+                if up:
+                    robotusb.MoveArm("WRST_UP")
+                else:
+                    robotusb.MoveArm("WRST_DN")
+                
+        elif abs(euler[2]) > GRIP: # grip with roll
+            if euler[2] > 0:
+                robotusb.MoveArm("GRIP_OP")
+            else:
+                robotusb.MoveArm("GRIP_CS")
     
 if __name__ == "__main__":
 	main()
