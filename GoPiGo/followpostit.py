@@ -1,6 +1,6 @@
 import vision
 import cv2
-#import gopigo
+import gopigo
 from parseconfig import parse_config
 
 tracker = vision.TrackSquare(False)
@@ -26,8 +26,9 @@ while True:
             else:
                 gopigo.fwd()
                 print "fwd"
+        else:
+            gopigo.stop()
     print str(square)
     #cv2.imshow("Live Capture", processed)
     #if cv2.waitKey(1) & 0xFF == ord('q'):
     #    break
-            
